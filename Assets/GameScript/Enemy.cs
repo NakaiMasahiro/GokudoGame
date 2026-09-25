@@ -1,0 +1,101 @@
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+    // HP
+    public int maxHp = 4000;
+    public int hp = 4000;
+
+    // ì|ÇÍâÊëú
+    public Sprite downSprite;
+
+    private SpriteRenderer sr;
+
+    private void Start()
+    {
+        hp = maxHp;
+
+        sr = GetComponent<SpriteRenderer>();
+    }
+
+    public void TakeDamage(int damage)
+    {
+        hp -= damage;
+
+        EnemyAI ai = GetComponent<EnemyAI>();
+
+        if (ai != null)
+        {
+            ai.Stun();
+        }
+
+        Debug.Log("ìGHP : " + hp);
+
+        Debug.Log("ìGHP : " + hp);
+
+        if (hp <= 0)
+        {
+            hp = 0;
+
+            Die();
+        }
+    }
+
+    // Åöí«â¡
+    void Die()
+    {
+        Debug.Log("ìGÇì|ÇµÇΩ");
+
+        Boss boss = FindAnyObjectByType<Boss>();
+
+        if (boss != null)
+        {
+            boss.CheckEnemyDeath();
+        }
+
+        // ì|ÇÍâÊëú
+        if (sr != null)
+        {
+            sr.sprite = downSprite;
+        }
+
+        transform.rotation = Quaternion.Euler(0f, 0f, -90f);
+        transform.position += new Vector3(0f, -0.4f, 0f);
+
+        // AIí‚é~
+        EnemyAI ai = GetComponent<EnemyAI>();
+
+        if (ai != null)
+        {
+            ai.SetDead();
+            ai.enabled = false;
+        }
+
+        // à⁄ìÆí‚é~
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+
+        // ìñÇΩÇËîªíËOFF
+        Collider2D col = GetComponent<Collider2D>();
+
+        if (col != null)
+        {
+            col.enabled = false;
+        }
+
+        // ÅöHPÉoÅ[Ç‡è¡Ç∑
+        Canvas hpCanvas = GetComponentInChildren<Canvas>();
+
+        if (hpCanvas != null)
+        {
+            hpCanvas.enabled = false;
+        }
+
+        // Åö1ïbå„Ç…è¡ñ≈
+        Destroy(gameObject, 1f);
+    }
+}
