@@ -21,7 +21,7 @@ public class SpawnManager : MonoBehaviour
     [Header("ラスボスの解放人数")]
     public int bossUnlockKillCount = 10;
 
-
+    [SerializeField] private int PreviewWave;
 
     [Header("各敵数")]
     public int[] waveEnemyCounts =
@@ -36,6 +36,8 @@ public class SpawnManager : MonoBehaviour
 
     void SpawnWave()
     {
+        PreviewWave = currentWave;
+
         Player player = FindAnyObjectByType<Player>();
         if(player == null )
         {
