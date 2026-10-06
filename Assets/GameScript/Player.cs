@@ -106,6 +106,9 @@ public class Player : MonoBehaviour
 
     private bool canTigerDrop = true;
 
+    //ìGÇì|ÇµÇΩêî
+    public int killCount = 0;
+
     public bool IsTigerDropReady()
     {
         return tigerDropReady;
@@ -292,6 +295,8 @@ public class Player : MonoBehaviour
             Invoke(nameof(EndAttack), attackAnimationTime);
         }
 
+
+
         // èe
         if (!isAttacking && canAttack && currentBullets > 0 && Mouse.current.rightButton.wasPressedThisFrame)
         {
@@ -332,6 +337,8 @@ public class Player : MonoBehaviour
         {
             TakeDamage(100);
         }
+
+        UpdateEnemyHpBar();
     }
 
     void FixedUpdate()
@@ -550,7 +557,6 @@ public class Player : MonoBehaviour
         return closestEnemy;
     }
 
-    // Åöí«â¡
     IEnumerator SideStep(Vector3 targetPos)
     {
         isBackStepping = true;
@@ -653,5 +659,72 @@ public class Player : MonoBehaviour
     void EnableTigerDrop()
     {
         canTigerDrop = true;
+    }
+
+    void UpdateEnemyHpBar()
+    {
+        GameObject[] enemies =
+            GameObject.FindGameObjectsWithTag("Enemy");
+
+        Enemy targetEnemy = null;
+
+        float closestDistance = Mathf.Infinity;
+
+        foreach (GameObject enemyObj in enemies)
+        {
+            Enemy enemy = enemyObj.GetComponent<Enemy>();
+
+            if (enemy == null)
+                continue;
+
+            float direction =
+                enemy.transform.position.x -
+                transform.position.x;
+
+            // ç∂å¸Ç´
+            if (sr.flipX)
+            {
+                if (direction > 0)
+                    continue;
+            }
+            // âEå¸Ç´
+            else
+            {
+                if (direction < 0)
+                    continue;
+            }
+
+            float distance =
+                Vector2.Distance(
+                    transform.position,
+                    enemy.transform.position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                targetEnemy = enemy;
+            }
+
+            if (closestDistance > 5f)
+            {
+                targetEnemy = null;
+            }
+        }
+
+        foreach (GameObject enemyObj in enemies)
+        {
+            Enemy enemy = enemyObj.GetComponent<Enemy>();
+
+            if (enemy != null)
+            {
+                enemy.ShowHpBar(enemy == targetEnemy);
+            }
+        }
+    }
+    public void AddKill()
+    {
+        killCount++;
+
+        Debug.Log("åÇîjêî : " + killCount);
     }
 }

@@ -21,6 +21,9 @@ public class Boss : MonoBehaviour
 
     private SpriteRenderer sr;
 
+    //Panel
+    public GameObject dialoguePanel;
+
     //振り向き前のセリフ
     public string[] warningTexts =
     {
@@ -28,7 +31,7 @@ public class Boss : MonoBehaviour
     "え？今、やった...",
     "まだ桐生はやらねえのか...",
     "銃声が聞こえた気が...",
-    "きりゅーちゃんみよっと"
+    "そろそろみよっと"
 };
 
     // 戻る時のセリフ
@@ -52,12 +55,9 @@ public class Boss : MonoBehaviour
     {
         sr = GetComponent<SpriteRenderer>();
 
-        sr.sprite = backSprite;
+        sr.sprite = lookSprite;
 
-        countDownText.gameObject.SetActive(false);
-
-        StartCoroutine(DarumaRoutine());
-
+        dialoguePanel.SetActive(false);
     }
 
     IEnumerator DarumaRoutine()
@@ -72,7 +72,7 @@ public class Boss : MonoBehaviour
 
             yield return new WaitForSeconds(waitTime);
 
-            countDownText.gameObject.SetActive(true);
+            dialoguePanel.SetActive(true);
 
             // ランダムなセリフを3回表示
             for (int i = 0; i < 3; i++)
@@ -86,7 +86,7 @@ public class Boss : MonoBehaviour
                 yield return new WaitForSeconds(1f);
             }
 
-            countDownText.gameObject.SetActive(false);
+            dialoguePanel.SetActive(false);
 
             // 振り向き
             isLooking = true;
@@ -97,7 +97,7 @@ public class Boss : MonoBehaviour
             yield return new WaitForSeconds(lookTime);
 
             // 戻る時のセリフ
-            countDownText.gameObject.SetActive(true);
+            dialoguePanel.SetActive(true);
 
             for (int i = 0; i < 2; i++)
             {
@@ -110,7 +110,7 @@ public class Boss : MonoBehaviour
                 yield return new WaitForSeconds(1f);
             }
 
-            countDownText.gameObject.SetActive(false);
+            dialoguePanel.SetActive(false);
 
             // 元に戻る
             isLooking = false;
@@ -135,12 +135,21 @@ public class Boss : MonoBehaviour
         if (player == null)
             yield break;
 
-        countDownText.gameObject.SetActive(true);
+        dialoguePanel.SetActive(true);
 
         countDownText.text = gameOverText;
 
         yield return new WaitForSeconds(2f);
 
+        dialoguePanel.SetActive(false);
+
         player.GameOver();
+    }
+
+    public void StartDarumaGame()
+    {
+        sr.sprite = backSprite;
+        isLooking = false;
+        StartCoroutine(DarumaRoutine());
     }
 }

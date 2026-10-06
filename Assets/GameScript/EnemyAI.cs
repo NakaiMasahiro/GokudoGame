@@ -14,8 +14,8 @@ public class EnemyAI : MonoBehaviour
     // ˆÚ“®‘¬“x
     public float moveSpeed = 2f;
 
-    // š”­Œ©‹——£
-    public float detectRange = 5f;
+    // ”­Œ©‹——£
+    public float detectRange = 20f;
 
     // ƒvƒŒƒCƒ„[‚Ì‘O‚Å~‚Ü‚é‹——£
     public float attackRange = 1.5f;
@@ -57,13 +57,45 @@ public class EnemyAI : MonoBehaviour
     //ƒJƒEƒ“ƒ^[ó•tŠÔ
     public float counterWindow = 0.2f;
 
+    //Ÿè‚É’†‰›‚Ö•à‚­
+    private bool entering = true;
+    private float targetX;
+
+    //“®‚©‚³‚È‚¢
+    public bool canMove = true;
+
+    private bool battleStarted = false;
+
+    //®—ñ
+    public bool startInBattle = true;
 
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            Debug.LogWarning("[EnemyAI]Regidbody2D Not faund ¦ˆê’URigidBodyGet‚·‚é");
+            gameObject.AddComponent<Rigidbody2D>();
+            rb = GetComponent<Rigidbody2D>();
+            if(rb == null)
+            {
+                Debug.LogError("[EnemyAI]‚È‚ñ‚©‚í‚©‚ç‚ñ"); 
+            }
+        }
+
+        Debug.Log(
+        gameObject.name +
+            " rb = " + rb);
+
+        detectRange = 0f;
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+
+        if (startInBattle)
+        {
+            StartBattle();
+        }
 
         if (playerObj != null)
         {
@@ -75,6 +107,37 @@ public class EnemyAI : MonoBehaviour
 
     void FixedUpdate()
     {
+
+        if (!canMove)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
+        if (entering)
+        {
+
+            float direction =
+                Mathf.Sign(
+                    targetX - transform.position.x);
+
+            rb.linearVelocity =
+                new Vector2(
+                    direction * moveSpeed,
+                    rb.linearVelocity.y);
+
+
+            if (Mathf.Abs(
+     transform.position.x - targetX) < 0.2f)
+            {
+                entering = false;
+
+                rb.linearVelocity = Vector2.zero;
+            }
+
+            return;
+        }
+
         if (isStunned)
         {
             rb.linearVelocity = Vector2.zero;
@@ -116,8 +179,10 @@ public class EnemyAI : MonoBehaviour
         }
 
         // ”­Œ©‹——£“à‚È‚ç’ÇÕ
-        else if (distance <= detectRange)
+        else if (battleStarted &&
+          distance <= detectRange)
         {
+
             Vector2 direction =
                 (player.position - transform.position).normalized;
 
@@ -152,6 +217,20 @@ public class EnemyAI : MonoBehaviour
                     attackPointStartPos.y,
                     attackPointStartPos.z);
         }
+
+        Vector3 viewPos =
+    Camera.main.WorldToViewportPoint(
+        transform.position);
+
+        if (entering &&
+            viewPos.x >= 0f &&
+            viewPos.x <= 1f)
+        {
+            entering = false;
+
+            rb.linearVelocity = Vector2.zero;
+        }
+
     }
 
     void EnableAttack()
@@ -200,7 +279,7 @@ public class EnemyAI : MonoBehaviour
             {
                 playerScript.TigerDropSuccess(
                     GetComponent<Enemy>());
-
+                Debug.Log("[AI]Call To Stun");
                 Stun();
 
                 return;
@@ -218,8 +297,6 @@ public class EnemyAI : MonoBehaviour
             sr.sprite = attack1Sprite;
 
             DealDamage(attack1);
-
-            Debug.Log("“G‚ÌUŒ‚‡@");
         }
 
         Invoke(nameof(ReturnToIdle), attackTime);
@@ -242,8 +319,6 @@ public class EnemyAI : MonoBehaviour
             sr.sprite = attack2Sprite;
 
             DealDamage(attack2);
-
-            Debug.Log("“G‚ÌUŒ‚‡A");
         }
 
         Invoke(nameof(ReturnToIdle), attackTime);
@@ -259,7 +334,6 @@ public class EnemyAI : MonoBehaviour
 
     void DealDamage(int damage)
     {
-        Debug.Log("UŒ‚”»’è”­¶");
         Collider2D[] hits =
             Physics2D.OverlapCircleAll(
                 attackPoint.transform.position,
@@ -273,7 +347,6 @@ public class EnemyAI : MonoBehaviour
 
             if (playerScript != null)
             {
-                Debug.Log("ƒqƒbƒg");
 
                 playerScript.TakeDamage(damage);
             }
@@ -301,29 +374,43 @@ public class EnemyAI : MonoBehaviour
 
     public void Stun()
     {
-        // €–S’†‚Í–³‹
-        if (isDead)
+
+        Debug.Log(
+gameObject.name +
+" Stun rb = " + rb);
+
+        if (rb == null)
+        {
+            Debug.LogError(gameObject.name + " ‚Ì rb ‚ª null");
+            return;
+        }
+        else
+        { 
+            // €–S’†‚Í–³‹
+            if (isDead)
             return;
 
-        isStunned = true;
+            isStunned = true;
 
-        //UŒ‚ƒLƒƒƒ“ƒZƒ‹
-        isAttacking = false;
+            //UŒ‚ƒLƒƒƒ“ƒZƒ‹
+            isAttacking = false;
 
-        //—\”õ“®ì‚âUŒ‚‚ğƒLƒƒƒ“ƒZƒ‹
-        CancelInvoke(nameof(Attack1));
-        CancelInvoke(nameof(Attack2));
-        CancelInvoke(nameof(ReturnToIdle));
+            //—\”õ“®ì‚âUŒ‚‚ğƒLƒƒƒ“ƒZƒ‹
+            CancelInvoke(nameof(Attack1));
+            CancelInvoke(nameof(Attack2));
+            CancelInvoke(nameof(ReturnToIdle));
 
-        canAttack = true;
-        rb.linearVelocity = Vector2.zero;
+            canAttack = true;
+            rb.linearVelocity = Vector2.zero;
 
-        sr.sprite = idleSprite;
+            sr.sprite = idleSprite;
 
-        Invoke(nameof(EndStun), stunTime);
+            Invoke(nameof(EndStun), stunTime);
+        }
+
     }
 
-    void EndStun()
+    private void EndStun()
     {
         isStunned = false;
 
@@ -331,5 +418,18 @@ public class EnemyAI : MonoBehaviour
         {
             sr.sprite = idleSprite;
         }
+    }
+
+    public void SetTargetPosition(float x)
+    {
+        targetX = x;
+    }
+
+    public void StartBattle()
+    {
+        battleStarted = true;
+        detectRange = 20f;
+
+        Debug.Log("StartBattle");
     }
 }
