@@ -24,6 +24,9 @@ public class EventManager : MonoBehaviour
 
     public SpawnManager spawnManager;
 
+    //文字を1つ出す間隔
+    public float charInterval = 0.07f;
+
     //スペースキーを押すと全文表示
     private bool isTyping;
 
@@ -31,28 +34,49 @@ public class EventManager : MonoBehaviour
     public AudioSource textAudioSource;
     public AudioClip textSE;
 
+    private bool IsSpacePressed()
+    {
+        return Keyboard.current != null &&
+               Keyboard.current.spaceKey.wasPressedThisFrame;
+    }
+
     private IEnumerator Start()
     {
-        player.enabled = false;
+        if (player != null)
+        {
+            player.enabled = false;
+        }
 
         dialoguePanel.SetActive(true);
+
+        bool firstWaveStarted = false;
 
         for (int i = 0; i < dialogues.Length; i++)
         {
             DialogueData dialogue = dialogues[i];
 
-            yield return StartCoroutine(TypeText(dialogue.speaker,dialogue.text));
+            yield return StartCoroutine(TypeText(dialogue.speaker, dialogue.text));
 
             // 3個目の会話で敵投入
             if (i == 2)
             {
-                spawnManager.StartFirstWave();
+                firstWaveStarted = true;
+
+                if (spawnManager != null)
+                {
+                    spawnManager.StartFirstWave();
+                }
             }
 
-            yield return new WaitUntil(() => Keyboard.current.spaceKey.wasPressedThisFrame);
+            // 全文表示に使ったスペースの同フレームを読み飛ばしてから、次の入力を待つ
+            yield return null;
+            yield return new WaitUntil(IsSpacePressed);
+        }
 
-            yield return new WaitUntil(() => Keyboard.current.spaceKey.wasPressedThisFrame);
-            //yield return null;
+        // 会話が2個以下でも、敵が出ないままにならないようにする
+        if (!firstWaveStarted && spawnManager != null)
+        {
+            spawnManager.StartFirstWave();
         }
 
         dialoguePanel.SetActive(false);
@@ -64,19 +88,28 @@ public class EventManager : MonoBehaviour
             boss.StartDarumaGame();
         }
 
-        EnemyAI[] enemies = FindObjectsByType<EnemyAI>();
+        EnemyAI[] enemies =
+     FindObjectsByType<EnemyAI>(FindObjectsInactive.Exclude);
 
         foreach (EnemyAI enemy in enemies)
         {
             enemy.StartBattle();
         }
 
-        player.enabled = true;
+        if (player != null)
+        {
+            player.enabled = true;
+        }
     }
 
     IEnumerator TypeText(string speaker, string message)
     {
-        dialogueText.text = $"<b>{speaker}</b>\n\n";
+        string header = $"<b>{speaker}</b>\n\n";
+
+        dialogueText.text = header;
+
+        // 前の会話を送ったスペースの同フレームで、いきなり全文表示にならないようにする
+        yield return null;
 
         for (int i = 0; i < message.Length; i++)
         {
@@ -85,23 +118,27 @@ public class EventManager : MonoBehaviour
             //2文字に1回SEをならすんだよ（そうだよ）
             if (i % 2 == 0 && message[i] != ' ' && message[i] != '\n')
             {
-                textAudioSource.PlayOneShot(textSE);
+                if (textAudioSource != null && textSE != null)
+                {
+                    textAudioSource.PlayOneShot(textSE);
+                }
             }
 
-            if (message[i] != ' ' &&
-                message[i] != '\n')
+            // 待っている間も毎フレーム、スキップ入力を見る
+            float timer = 0f;
+
+            while (timer < charInterval)
             {
-                textAudioSource.PlayOneShot(textSE);
-            }
+                if (IsSpacePressed())
+                {
+                    dialogueText.text = header + message;
+                    yield break;
+                }
 
-            if (Keyboard.current.spaceKey.wasPressedThisFrame)
-            {
-                dialogueText.text =
-                    $"<b>{speaker}</b>\n\n{message}";
-                yield break;
-            }
+                timer += Time.deltaTime;
 
-            yield return new WaitForSeconds(0.07f);
+                yield return null;
+            }
         }
     }
 }

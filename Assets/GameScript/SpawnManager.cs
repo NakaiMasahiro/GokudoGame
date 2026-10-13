@@ -39,16 +39,22 @@ public class SpawnManager : MonoBehaviour
         PreviewWave = currentWave;
 
         Player player = FindAnyObjectByType<Player>();
-        if(player == null )
+        if (player == null)
         {
             Debug.LogWarning("Player ねえよ");
         }
 
-        // 30人倒したらラスボス
+        // 規定人数を倒したらラスボス
         if (!bossSpawned &&
             player != null &&
             player.killCount >= bossUnlockKillCount)
         {
+            if (bossPrefab == null || rightSpawn == null)
+            {
+                Debug.LogError("bossPrefab または rightSpawn が未設定です");
+                return;
+            }
+
             bossSpawned = true;
 
             Instantiate(
@@ -64,6 +70,18 @@ public class SpawnManager : MonoBehaviour
         // ラスボス出現後は雑魚を出さない
         if (bossSpawned)
             return;
+
+        if (enemyPrefab == null || rightSpawn == null)
+        {
+            Debug.LogError("enemyPrefab または rightSpawn が未設定です");
+            return;
+        }
+
+        if (waveEnemyCounts == null || waveEnemyCounts.Length == 0)
+        {
+            Debug.LogError("waveEnemyCounts が空です");
+            return;
+        }
 
         if (currentWave >= waveEnemyCounts.Length)
         {
@@ -105,8 +123,13 @@ public class SpawnManager : MonoBehaviour
                     ai.startInBattle = false;
                 }
 
+                float centerX =
+                    enemyFormationCenter != null
+                        ? enemyFormationCenter.position.x
+                        : rightSpawn.position.x;
+
                 ai.SetTargetPosition(
-                    enemyFormationCenter.position.x +
+                    centerX +
                     Random.Range(
                         -formationWidth,
                         formationWidth));
@@ -116,6 +139,11 @@ public class SpawnManager : MonoBehaviour
                     ai.StartBattle();
                 }
             }
+        }
+
+        if (enemyFormationCenter == null)
+        {
+            Debug.LogWarning("enemyFormationCenter が未設定です（出現位置を目標にします）");
         }
 
         firstWaveSpawned = true;
@@ -128,30 +156,33 @@ public class SpawnManager : MonoBehaviour
 
     public void EnemyDefeated()
     {
+        // 最初のウェーブが始まる前は数えない
+        if (!firstWaveSpawned)
+            return;
+
         aliveEnemies--;
+
+        if (aliveEnemies > 0)
+            return;
 
         Player player = FindAnyObjectByType<Player>();
 
-        if (aliveEnemies <= 0)
+        // ラスボスへの到達人数に達していなければ次のフロアへ
+        bool bossReady =
+            player != null &&
+            player.killCount >= bossUnlockKillCount;
+
+        if (!bossReady)
         {
-            // ラスボスへの到達人数
-            if (player != null &&
-                player.killCount >= 10)
-            {
-                SpawnWave();
-                return;
-            }
-
             currentWave++;
-
-            Debug.LogWarning("EnemyDefeated return;");
-            SpawnWave();
         }
+
+        SpawnWave();
     }
 
     public void StartFirstWave()
     {
-        Debug.LogWarning("Enemy Spawn");
+        Debug.Log("Enemy Spawn");
         currentWave = 0;
 
         SpawnWave();

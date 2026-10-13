@@ -14,11 +14,19 @@ public class Enemy : MonoBehaviour
 
     private bool enteredScreen = false;
 
+    // âÊñ ì‡Ç…ì¸Ç¡ÇΩÇ©
+    public bool HasEnteredScreen => enteredScreen;
+
+    //ï«
     private Collider2D leftWallCol;
     private Collider2D rightWallCol;
 
     //HPÉoÅ[
     private Canvas hpCanvas;
+
+    // ì|Ç≥ÇÍÇΩÇ©
+    private bool isDead = false;
+    public bool IsDead => isDead;
 
     void Start()
     {
@@ -28,28 +36,11 @@ public class Enemy : MonoBehaviour
         enemyCol = GetComponent<Collider2D>();
 
         // ï«éÊìæ
-        GameObject leftWall = GameObject.Find("LeftWall");
-        GameObject rightWall = GameObject.Find("RightWall");
+        leftWallCol = FindWallCollider("LeftWall");
+        rightWallCol = FindWallCollider("RightWall");
 
-        if (leftWall != null)
-        {
-            leftWallCol = leftWall.GetComponent<Collider2D>();
-
-            Physics2D.IgnoreCollision(
-                enemyCol,
-                leftWallCol,
-                true);
-        }
-
-        if (rightWall != null)
-        {
-            rightWallCol = rightWall.GetComponent<Collider2D>();
-
-            Physics2D.IgnoreCollision(
-                enemyCol,
-                rightWallCol,
-                true);
-        }
+        // ì¸èÍÇ∑ÇÈÇ‹Ç≈ï«Ç∆ìñÇΩÇÁÇ»Ç¢
+        SetIgnoreWalls(true);
 
         hpCanvas = GetComponentInChildren<Canvas>();
 
@@ -59,50 +50,70 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    Collider2D FindWallCollider(string wallName)
+    {
+        GameObject wall = GameObject.Find(wallName);
+
+        if (wall == null)
+            return null;
+
+        return wall.GetComponent<Collider2D>();
+    }
+
+    void SetIgnoreWalls(bool ignore)
+    {
+        if (enemyCol == null)
+            return;
+
+        if (leftWallCol != null)
+        {
+            Physics2D.IgnoreCollision(enemyCol, leftWallCol, ignore);
+        }
+
+        if (rightWallCol != null)
+        {
+            Physics2D.IgnoreCollision(enemyCol, rightWallCol, ignore);
+        }
+    }
+
     void Update()
     {
-        if (!enteredScreen)
+        if (enteredScreen)
+            return;
+
+        Camera cam = Camera.main;
+
+        if (cam == null)
+            return;
+
+        Vector3 viewPos =
+            cam.WorldToViewportPoint(
+                transform.position);
+
+        if (viewPos.x >= 0f &&
+            viewPos.x <= 1f)
         {
-            Vector3 viewPos =
-                Camera.main.WorldToViewportPoint(
-                    transform.position);
+            enteredScreen = true;
 
-            if (viewPos.x >= 0f &&
-                viewPos.x <= 1f)
-            {
-                enteredScreen = true;
+            // ï«Ç∆ÇÃìñÇΩÇËîªíËÇñﬂÇ∑
+            SetIgnoreWalls(false);
 
-                // ï«Ç∆ÇÃìñÇΩÇËîªíËÇñﬂÇ∑
-                if (leftWallCol != null)
-                {
-                    Physics2D.IgnoreCollision(
-                        enemyCol,
-                        leftWallCol,
-                        false);
-                }
-
-                if (rightWallCol != null)
-                {
-                    Physics2D.IgnoreCollision(
-                        enemyCol,
-                        rightWallCol,
-                        false);
-                }
-
-                Debug.Log("ìGÇ™ì¸èÍÇµÇΩ");
-            }
+            Debug.Log("ìGÇ™ì¸èÍÇµÇΩ");
         }
     }
 
     public void TakeDamage(int damage)
     {
+        // ì|ÇÍÇΩå„ÇÃí«åÇÇÕñ≥å¯
+        if (isDead)
+            return;
+
         hp -= damage;
 
         EnemyAI ai = GetComponent<EnemyAI>();
 
         if (ai != null)
         {
-            Debug.Log("[Enemy]Call To Stun");
             ai.Stun();
         }
 
@@ -117,6 +128,11 @@ public class Enemy : MonoBehaviour
 
     void Die()
     {
+        if (isDead)
+            return;
+
+        isDead = true;
+
         Player player =
             FindAnyObjectByType<Player>();
 
@@ -124,6 +140,7 @@ public class Enemy : MonoBehaviour
         {
             player.AddKill();
         }
+
         Debug.Log("ìGÇì|ÇµÇΩ");
 
         Boss boss = FindAnyObjectByType<Boss>();
@@ -149,7 +166,6 @@ public class Enemy : MonoBehaviour
         if (ai != null)
         {
             ai.SetDead();
-            //ai.enabled = false;
         }
 
         Rigidbody2D rb =
@@ -165,24 +181,15 @@ public class Enemy : MonoBehaviour
             enemyCol.enabled = false;
         }
 
-        Canvas hpCanvas =
-            GetComponentInChildren<Canvas>();
-
         if (hpCanvas != null)
         {
             hpCanvas.enabled = false;
         }
 
-
-        if(gameObject == null)
-        {
-            Debug.LogWarning("gameObject null");
-        }
         Destroy(gameObject, 1f);
 
         SpawnManager spawnManager =
-    FindAnyObjectByType<SpawnManager>();
-
+            FindAnyObjectByType<SpawnManager>();
 
         if (spawnManager != null)
         {
@@ -192,6 +199,9 @@ public class Enemy : MonoBehaviour
 
     public void ShowHpBar(bool show)
     {
+        if (isDead)
+            show = false;
+
         if (hpCanvas != null)
         {
             hpCanvas.enabled = show;

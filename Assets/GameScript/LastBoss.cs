@@ -21,6 +21,7 @@ public class LastBoss : MonoBehaviour
 
     private bool canAttack = true;
     private bool phase2 = false;
+    private bool isDead = false;
 
     private Transform player;
     private Rigidbody2D rb;
@@ -44,7 +45,7 @@ public class LastBoss : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (player == null)
+        if (isDead || player == null || rb == null)
             return;
 
         float distance =
@@ -151,6 +152,9 @@ public class LastBoss : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        if (isDead)
+            return;
+
         if (Random.Range(0f, 100f) < dodgeChance)
         {
             Dodge();
@@ -180,6 +184,13 @@ public class LastBoss : MonoBehaviour
 
     void Die()
     {
+        isDead = true;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+
         Debug.Log("ラスボス撃破！");
 
         Destroy(gameObject);

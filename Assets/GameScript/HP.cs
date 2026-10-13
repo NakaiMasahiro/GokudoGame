@@ -5,16 +5,23 @@ public class HP : MonoBehaviour
 {
     public Player player;
 
-    // —Î
+    // —Î(‘O)
     public Slider hpBar;
 
-    // ‰©F
+    // ‰©F(Œã‚ë)
     public Slider delayedBar;
 
     public float smoothSpeed = 150f;
 
     void Start()
     {
+        if (player == null || hpBar == null || delayedBar == null)
+        {
+            Debug.LogWarning("[HP] player / hpBar / delayedBar ‚ª–¢İ’è‚Å‚·");
+            enabled = false;
+            return;
+        }
+
         hpBar.maxValue = player.maxHp;
         delayedBar.maxValue = player.maxHp;
 
@@ -24,6 +31,9 @@ public class HP : MonoBehaviour
 
     void Update()
     {
+        if (player == null)
+            return;
+
         // —Î
         hpBar.value = player.hp;
 

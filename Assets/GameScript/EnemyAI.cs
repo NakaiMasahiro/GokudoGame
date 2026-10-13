@@ -24,7 +24,7 @@ public class EnemyAI : MonoBehaviour
     public int attack1 = 50;
     public int attack2 = 100;
 
-    //攻撃感覚
+    //攻撃間隔
     public float attackCooldown = 2f;
 
     private bool canAttack = true;
@@ -61,6 +61,10 @@ public class EnemyAI : MonoBehaviour
     private bool entering = true;
     private float targetX;
 
+    //入場に時間がかかりすぎた時の保険
+    public float enterTimeout = 6f;
+    private float enteringTimer = 0f;
+
     //動かさない
     public bool canMove = true;
 
@@ -69,44 +73,72 @@ public class EnemyAI : MonoBehaviour
     //整列
     public bool startInBattle = true;
 
+    //攻撃SE
+    public AudioClip hitAttack;
+
+    //空振りSE
+    public AudioClip missAttack;
+
+    //AudioSource
+    public AudioSource audioSource;
+
+
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
+
         if (rb == null)
         {
-            Debug.LogWarning("[EnemyAI]Regidbody2D Not faund ※一旦RigidBodyGetする");
-            gameObject.AddComponent<Rigidbody2D>();
-            rb = GetComponent<Rigidbody2D>();
-            if(rb == null)
-            {
-                Debug.LogError("[EnemyAI]なんかわからん"); 
-            }
+            Debug.LogWarning("[EnemyAI]Rigidbody2D が無いので追加します: " + gameObject.name);
+            rb = gameObject.AddComponent<Rigidbody2D>();
         }
 
-        Debug.Log(
-        gameObject.name +
-            " rb = " + rb);
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
 
-        detectRange = 0f;
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            audioSource.playOnAwake = false;
+        }
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-
-        if (startInBattle)
-        {
-            StartBattle();
-        }
 
         if (playerObj != null)
         {
             player = playerObj.transform;
         }
 
-        attackPointStartPos = attackPoint.transform.localPosition;
+        if (attackPoint != null)
+        {
+            attackPointStartPos = attackPoint.transform.localPosition;
+        }
+        else
+        {
+            Debug.LogWarning("[EnemyAI]attackPoint が未設定です: " + gameObject.name);
+        }
+
+        if (startInBattle)
+        {
+            StartBattle();
+        }
     }
 
     void FixedUpdate()
     {
+        if (rb == null)
+            return;
+
+        // 倒された後は歩かせない
+        if (isDead)
+        {
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            return;
+        }
 
         if (!canMove)
         {
@@ -116,6 +148,7 @@ public class EnemyAI : MonoBehaviour
 
         if (entering)
         {
+            enteringTimer += Time.fixedDeltaTime;
 
             float direction =
                 Mathf.Sign(
@@ -126,9 +159,9 @@ public class EnemyAI : MonoBehaviour
                     direction * moveSpeed,
                     rb.linearVelocity.y);
 
-
             if (Mathf.Abs(
-     transform.position.x - targetX) < 0.2f)
+                    transform.position.x - targetX) < 0.2f ||
+                enteringTimer >= enterTimeout)
             {
                 entering = false;
 
@@ -158,21 +191,16 @@ public class EnemyAI : MonoBehaviour
                 transform.position,
                 player.position);
 
-        if (player.position.x < transform.position.x)
-        {
-            sr.flipX = false;
-        }
-        else
-        {
-            sr.flipX = true;
-        }
+        // Playerの方を向く
+        sr.flipX = player.position.x >= transform.position.x;
 
         // 攻撃距離まで近づいたら停止
         if (distance <= attackRange)
         {
             rb.linearVelocity = Vector2.zero;
 
-            if (canAttack)
+            // 戦闘開始前会話中は殴らない
+            if (canAttack && battleStarted)
             {
                 Attack();
             }
@@ -199,38 +227,26 @@ public class EnemyAI : MonoBehaviour
         }
 
         // Player側に攻撃判定を移動
-        if (player.position.x < transform.position.x)
+        if (attackPoint != null)
         {
-            // Playerが左
+            float side =
+                player.position.x < transform.position.x ? -1f : 1f;
+
             attackPoint.transform.localPosition =
                 new Vector3(
-                    -Mathf.Abs(attackPointStartPos.x),
+                    side * Mathf.Abs(attackPointStartPos.x),
                     attackPointStartPos.y,
                     attackPointStartPos.z);
         }
-        else
-        {
-            // Playerが右
-            attackPoint.transform.localPosition =
-                new Vector3(
-                    Mathf.Abs(attackPointStartPos.x),
-                    attackPointStartPos.y,
-                    attackPointStartPos.z);
-        }
+    }
 
-        Vector3 viewPos =
-    Camera.main.WorldToViewportPoint(
-        transform.position);
+    // 効果音を1回鳴らす
+    void PlaySE(AudioClip clip)
+    {
+        if (audioSource == null || clip == null)
+            return;
 
-        if (entering &&
-            viewPos.x >= 0f &&
-            viewPos.x <= 1f)
-        {
-            entering = false;
-
-            rb.linearVelocity = Vector2.zero;
-        }
-
+        audioSource.PlayOneShot(clip);
     }
 
     void EnableAttack()
@@ -267,58 +283,61 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    // Playerが虎落とし待ち受け中なら、カウンターを受けて怯む
+    bool TryGetCountered(Player playerScript)
+    {
+        if (playerScript == null || !playerScript.IsTigerDropReady())
+            return false;
+
+        Enemy self = GetComponent<Enemy>();
+
+        if (self == null)
+            return false;
+
+        playerScript.TigerDropSuccess(self);
+        Stun();
+
+        return true;
+    }
+
     //右パンチ
     void Attack1()
     {
-        Player playerScript =
-            player.GetComponent<Player>();
-
-        if (playerScript != null)
-        {
-            if (playerScript.IsTigerDropReady())
-            {
-                playerScript.TigerDropSuccess(
-                    GetComponent<Enemy>());
-                Debug.Log("[AI]Call To Stun");
-                Stun();
-
-                return;
-            }
-        }
-
-        if (isStunned)
-            return;
-
-        if (isDead)
-            return;
-
-        if (playerScript != null)
-        {
-            sr.sprite = attack1Sprite;
-
-            DealDamage(attack1);
-        }
-
-        Invoke(nameof(ReturnToIdle), attackTime);
-        Invoke(nameof(EnableAttack), attackCooldown);
+        PerformAttack(attack1Sprite, attack1);
     }
 
     //左パンチ
     void Attack2()
     {
+        PerformAttack(attack2Sprite, attack2);
+    }
+
+    void PerformAttack(Sprite attackSprite, int damage)
+    {
+        if (player == null)
+            return;
+
+        Player playerScript =
+            player.GetComponent<Player>();
+
+        // 虎落とし(カウンター)はどちらの攻撃にも成立する
+        if (TryGetCountered(playerScript))
+            return;
+
         if (isStunned)
             return;
 
         if (isDead)
             return;
 
-        Player playerScript = player.GetComponent<Player>();
-
         if (playerScript != null)
         {
-            sr.sprite = attack2Sprite;
+            sr.sprite = attackSprite;
 
-            DealDamage(attack2);
+            // 当たれば命中音、外れれば空振り音（どちらか一方だけ鳴る）
+            bool hit = DealDamage(damage);
+
+            PlaySE(hit ? hitAttack : missAttack);
         }
 
         Invoke(nameof(ReturnToIdle), attackTime);
@@ -332,13 +351,19 @@ public class EnemyAI : MonoBehaviour
         isAttacking = false;
     }
 
-    void DealDamage(int damage)
+    // Playerに当たったら true
+    bool DealDamage(int damage)
     {
+        if (attackPoint == null)
+            return false;
+
         Collider2D[] hits =
             Physics2D.OverlapCircleAll(
                 attackPoint.transform.position,
                 attackRadius,
                 playerLayer);
+
+        bool damaged = false;
 
         foreach (Collider2D hit in hits)
         {
@@ -347,10 +372,12 @@ public class EnemyAI : MonoBehaviour
 
             if (playerScript != null)
             {
-
                 playerScript.TakeDamage(damage);
+                damaged = true;
             }
         }
+
+        return damaged;
     }
 
     void OnDrawGizmosSelected()
@@ -374,40 +401,34 @@ public class EnemyAI : MonoBehaviour
 
     public void Stun()
     {
-
-        Debug.Log(
-gameObject.name +
-" Stun rb = " + rb);
+        // 死亡中は無視
+        if (isDead)
+            return;
 
         if (rb == null)
         {
             Debug.LogError(gameObject.name + " の rb が null");
             return;
         }
-        else
-        { 
-            // 死亡中は無視
-            if (isDead)
-            return;
 
-            isStunned = true;
+        isStunned = true;
 
-            //攻撃キャンセル
-            isAttacking = false;
+        //攻撃キャンセル
+        isAttacking = false;
 
-            //予備動作や攻撃をキャンセル
-            CancelInvoke(nameof(Attack1));
-            CancelInvoke(nameof(Attack2));
-            CancelInvoke(nameof(ReturnToIdle));
+        //予備動作や攻撃をキャンセル
+        CancelInvoke(nameof(Attack1));
+        CancelInvoke(nameof(Attack2));
+        CancelInvoke(nameof(ReturnToIdle));
 
-            canAttack = true;
-            rb.linearVelocity = Vector2.zero;
+        canAttack = true;
+        rb.linearVelocity = Vector2.zero;
 
-            sr.sprite = idleSprite;
+        sr.sprite = idleSprite;
 
-            Invoke(nameof(EndStun), stunTime);
-        }
-
+        // 連続で殴られた時に、古いタイマーで怯みが早く解けないようにする
+        CancelInvoke(nameof(EndStun));
+        Invoke(nameof(EndStun), stunTime);
     }
 
     private void EndStun()
@@ -428,7 +449,12 @@ gameObject.name +
     public void StartBattle()
     {
         battleStarted = true;
-        detectRange = 20f;
+
+        //保険の窓口
+        if (detectRange <= 0f)
+        {
+            detectRange = 20f;
+        }
 
         Debug.Log("StartBattle");
     }

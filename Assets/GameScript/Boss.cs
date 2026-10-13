@@ -24,7 +24,7 @@ public class Boss : MonoBehaviour
     //Panel
     public GameObject dialoguePanel;
 
-    //振り向き前のセリフ
+    //振り向き前
     public string[] warningTexts =
     {
     "そろそろ桐生の様子を見てみるか...",
@@ -34,7 +34,7 @@ public class Boss : MonoBehaviour
     "そろそろみよっと"
 };
 
-    // 戻る時のセリフ
+    // 戻る時
     public string[] returnTexts =
     {
     "チッ...",
@@ -51,13 +51,37 @@ public class Boss : MonoBehaviour
     //コメント
     public TMP_Text countDownText;
 
+    // カウントの進行中コルーチン
+    private Coroutine darumaCoroutine;
+
+    // ゲームオーバー演出が始まっているか
+    private bool gameOverTriggered = false;
+
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
 
         sr.sprite = lookSprite;
 
-        dialoguePanel.SetActive(false);
+        SetPanel(false);
+    }
+
+    void SetPanel(bool active)
+    {
+        if (dialoguePanel != null)
+        {
+            dialoguePanel.SetActive(active);
+        }
+    }
+
+    // 配列からランダムに1つ選んで表示する
+    void ShowRandomText(string[] texts)
+    {
+        if (countDownText == null || texts == null || texts.Length == 0)
+            return;
+
+        countDownText.text =
+            texts[Random.Range(0, texts.Length)];
     }
 
     IEnumerator DarumaRoutine()
@@ -72,21 +96,17 @@ public class Boss : MonoBehaviour
 
             yield return new WaitForSeconds(waitTime);
 
-            dialoguePanel.SetActive(true);
+            SetPanel(true);
 
             // ランダムなセリフを3回表示
             for (int i = 0; i < 3; i++)
             {
-                string randomText =
-                    warningTexts[
-                        Random.Range(0, warningTexts.Length)];
-
-                countDownText.text = randomText;
+                ShowRandomText(warningTexts);
 
                 yield return new WaitForSeconds(1f);
             }
 
-            dialoguePanel.SetActive(false);
+            SetPanel(false);
 
             // 振り向き
             isLooking = true;
@@ -97,20 +117,16 @@ public class Boss : MonoBehaviour
             yield return new WaitForSeconds(lookTime);
 
             // 戻る時のセリフ
-            dialoguePanel.SetActive(true);
+            SetPanel(true);
 
             for (int i = 0; i < 2; i++)
             {
-                string randomText =
-                    returnTexts[
-                        Random.Range(0, returnTexts.Length)];
-
-                countDownText.text = randomText;
+                ShowRandomText(returnTexts);
 
                 yield return new WaitForSeconds(1f);
             }
 
-            dialoguePanel.SetActive(false);
+            SetPanel(false);
 
             // 元に戻る
             isLooking = false;
@@ -119,37 +135,59 @@ public class Boss : MonoBehaviour
             Debug.Log("後ろ向き");
         }
     }
+
     public void CheckEnemyDeath()
     {
-        if (isLooking)
-        {
-            StartCoroutine(GameOverSequence());
-        }
-    }
+        if (!isLooking || gameOverTriggered)
+            return;
 
-    IEnumerator GameOverSequence()
-    {
         Player player =
             FindAnyObjectByType<Player>();
 
         if (player == null)
-            yield break;
+            return;
 
-        dialoguePanel.SetActive(true);
+        gameOverTriggered = true;
 
-        countDownText.text = gameOverText;
+        // カウントの進行を止める
+        if (darumaCoroutine != null)
+        {
+            StopCoroutine(darumaCoroutine);
+            darumaCoroutine = null;
+        }
 
-        yield return new WaitForSeconds(2f);
+        StartCoroutine(GameOverSequence(player));
+    }
 
-        dialoguePanel.SetActive(false);
+    IEnumerator GameOverSequence(Player player)
+    {
+        SetPanel(true);
 
-        player.GameOver();
+        if (countDownText != null)
+        {
+            countDownText.text = gameOverText;
+        }
+
+        yield return new WaitForSeconds(1.5f);
+
+        SetPanel(false);
+
+        if (player != null)
+        {
+            player.GameOver();
+        }
     }
 
     public void StartDarumaGame()
     {
         sr.sprite = backSprite;
         isLooking = false;
-        StartCoroutine(DarumaRoutine());
+
+        if (darumaCoroutine != null)
+        {
+            StopCoroutine(darumaCoroutine);
+        }
+
+        darumaCoroutine = StartCoroutine(DarumaRoutine());
     }
 }

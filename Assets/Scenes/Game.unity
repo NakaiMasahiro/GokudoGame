@@ -336,6 +336,7 @@ MonoBehaviour:
   - speaker: "\u6850\u751F"
     text: "\u306F\u3044\u3002\u308F\u304B\u3063\u3066\u3044\u307E\u3059\u3002"
   spawnManager: {fileID: 1677619947}
+  charInterval: 0.03
   textAudioSource: {fileID: 465634363}
   textSE: {fileID: 8300000, guid: b308eeef1f5fdea4198317a0d2d80932, type: 3}
 --- !u!4 &465634362
@@ -1200,7 +1201,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 778d6edd9e75bcc43a85bdd55f901c37, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitSystem
-  currentEnemy: {fileID: 4299444308460463652, guid: a9a3889f60c4bab4b81bae01e3d228d8, type: 3}
 --- !u!61 &575496257
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1955,7 +1955,7 @@ GameObject:
   - component: {fileID: 1012714712}
   - component: {fileID: 1012714711}
   m_Layer: 5
-  m_Name: Panel
+  m_Name: Gemeover
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2535,11 +2535,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1505894988}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 367463659beb1f046bcefe2cbf09be31, type: 3}
+  m_Script: {fileID: 11500000, guid: 217cb6656a58eac46b023ba1523d16f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Player
-  maxHp: 5000
-  hp: 5000
+  maxHp: 3000
+  hp: 3000
   idleSprite: {fileID: -7809785511404226330, guid: 0e32818ae75689f41b4ebfa280c9cf2c, type: 3}
   rightPanch: {fileID: 4928026382483245373, guid: e3072f13a3626d045b024fcbe05c5263, type: 3}
   leftPanch: {fileID: 3695666629783374985, guid: a2af164b7194d2f4db54876ede3c2435, type: 3}
@@ -2547,30 +2547,41 @@ MonoBehaviour:
   gunSprite: {fileID: 3881329861920867122, guid: dd8aba2943c5512459886550e5c974b1, type: 3}
   guardSprite: {fileID: -1016836683434146449, guid: 6f400cdd6e4bf2a40a228f8ecaf28794, type: 3}
   tigerDrop: {fileID: 1289285386175024262, guid: f62f5df18f4e7ee49a030abe406033ea, type: 3}
-  rightPunchDamage: 100
-  leftPunchDamage: 130
-  kikkuDamage: 200
-  gunDamage: 400
-  attackMoveLockTime: 0.3
+  rightPunchDamage: 50
+  leftPunchDamage: 60
+  kikkuDamage: 100
+  gunDamage: 500
+  attackMoveLockTime: 0.2
   maxBullets: 10
   hitSystem: {fileID: 575496254}
   attackAnimationTime: 0.5
-  moveSpeed: 5
-  guardSpeed: 3
+  moveSpeed: 0
+  guardSpeed: 2
   normalSpeed: 5
   comboResetTime: 1.2
-  comboEndCooldown: 1
-  backStepForce: 10
+  comboEndCooldown: 0.7
+  backStepForce: 8
   backStepCooldown: 0.4
   sideStepDistance: 1.5
   lockOnDistance: 3
-  sideStepDuration: 0.1
+  sideStepDuration: 0.15
   gameOverPanel: {fileID: 1012714709}
   tigerDropDamage: 1000
-  tigerDropWindow: 0.1
+  tigerDropWindow: 0.2
   tigerDropMissStiffness: 1
   tigerDropCooldown: 2
   killCount: 0
+  audioSource: {fileID: 465634363}
+  rightPunchMissSE: {fileID: 8300000, guid: c10ec9bc700702940bff964984732351, type: 3}
+  leftPunchMissSE: {fileID: 8300000, guid: c10ec9bc700702940bff964984732351, type: 3}
+  kickMissSE: {fileID: 8300000, guid: 6ee9869708a239b4eb35b8294b89886f, type: 3}
+  gunSE: {fileID: 8300000, guid: 6fe268904d124d9478ff1d128e6764b0, type: 3}
+  rightPunchHitSE: {fileID: 8300000, guid: bf19ba006b2950445b45ed2fc3a4b739, type: 3}
+  leftPunchHitSE: {fileID: 8300000, guid: bf19ba006b2950445b45ed2fc3a4b739, type: 3}
+  kickHitSE: {fileID: 8300000, guid: 112732248863b2e4f87f4f56d748ef18, type: 3}
+  tigerDropSuccessSE: {fileID: 8300000, guid: 1db830146dba7384dad7f0c489e0c3a5, type: 3}
+  tigerDropMissSE: {fileID: 8300000, guid: 558f3bb679f4d9245abf9364667112f1, type: 3}
+  enemyRefreshInterval: 0.5
 --- !u!50 &1505894994
 Rigidbody2D:
   serializedVersion: 5
@@ -2906,6 +2917,7 @@ MonoBehaviour:
   enemyFormationCenter: {fileID: 887557559}
   formationWidth: 2
   bossUnlockKillCount: 10
+  PreviewWave: 0
   waveEnemyCounts: 020000000300000005000000
 --- !u!1 &1792220983
 GameObject:

@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TextCore;
@@ -8,11 +7,11 @@ using UnityEngine.SceneManagement;
 public class Player : MonoBehaviour
 {
 
-    //HP‚ÌÅ‘å’l
+    //HPã®æœ€å¤§å€¤
     public int maxHp = 1000;
     public int hp = 1000;
 
-    // ‰æ‘œ
+    // ç”»åƒ
     public Sprite idleSprite;
     public Sprite rightPanch;
     public Sprite leftPanch;
@@ -21,60 +20,60 @@ public class Player : MonoBehaviour
     public Sprite guardSprite;
     public Sprite tigerDrop;
 
-    //Sprite‚ğ”½“]
+    //Spriteã‚’åè»¢
     private bool facingLeft = false;
 
-    // ƒ_ƒ[ƒW
+    // ãƒ€ãƒ¡ãƒ¼ã‚¸
     public int rightPunchDamage = 50;
     public int leftPunchDamage = 60;
     public int kikkuDamage = 100;
     public int gunDamage = 500;
 
-    //UŒ‚d’¼
+    //æ”»æ’ƒç¡¬ç›´
     public float attackMoveLockTime = 0.2f;
     private bool isMoveLocked = false;
 
-    //e‚Ì’e”
+    //éŠƒã®å¼¾æ•°
     public int maxBullets = 10;
     private int currentBullets;
 
-    // ƒqƒbƒg”»’è
+    // ãƒ’ãƒƒãƒˆåˆ¤å®š
     public GameObject hitSystem;
 
-    //UŒ‚‰æ‘œ•\¦ŠÔ
+    //æ”»æ’ƒç”»åƒè¡¨ç¤ºæ™‚é–“
     public float attackAnimationTime = 0.5f;
 
-    // ˆÚ“®
+    // ç§»å‹•
     public float moveSpeed;
-    public float guardSpeed = 2f; //\‚¦
-    public float normalSpeed = 5f; //’Êí‘¬“x
+    public float guardSpeed = 2f; //æ§‹ãˆ
+    public float normalSpeed = 5f; //é€šå¸¸é€Ÿåº¦
 
     private Rigidbody2D rb;
     private SpriteRenderer sr;
     private Vector2 movement;
 
-    // ƒRƒ“ƒ{
+    // ã‚³ãƒ³ãƒœ
     private int combo = 0;
 
-    //ƒRƒ“ƒ{“rØ‚ê‚éŠÔ
+    //ã‚³ãƒ³ãƒœé€”åˆ‡ã‚Œã‚‹æ™‚é–“
     public float comboResetTime = 1.2f;
 
-    //ÅIUŒ‚ŠÔ
+    //æœ€çµ‚æ”»æ’ƒæ™‚é–“
     private float lastAttackTime;
 
-    // UŒ‚‰Â”\‚©
+    // æ”»æ’ƒå¯èƒ½ã‹
     private bool canAttack = true;
 
-    //\‚¦
+    //æ§‹ãˆ
     private bool guard = false;
 
-    //UŒ‚’†‚É‚Í˜A‘Å‚Å‚«‚È‚¢
+    //æ”»æ’ƒä¸­ã«ã¯é€£æ‰“ã§ããªã„
     private bool isAttacking = false;
 
-    //ƒLƒbƒNŒã‚Ìd’¼
+    //ã‚­ãƒƒã‚¯å¾Œã®ç¡¬ç›´
     public float comboEndCooldown = 0.7f;
 
-    //‰ñ”ğ
+    //å›é¿
     public float backStepForce = 8f;
     public float backStepCooldown = 0.4f;
 
@@ -86,12 +85,12 @@ public class Player : MonoBehaviour
 
     public float sideStepDuration = 0.15f;
 
-    //GameOver‚Ìƒpƒlƒ‹
+    //GameOverã®ãƒ‘ãƒãƒ«
     public GameObject gameOverPanel;
 
     private bool isGameOver = false;
 
-    // ƒJƒEƒ“ƒ^[
+    // è™è½ã¨ã—
     public int tigerDropDamage = 1000;
 
     private bool tigerDropReady = false;
@@ -101,13 +100,46 @@ public class Player : MonoBehaviour
 
     private bool isTigerDropStance = false;
 
-    // ŒÕ—‚Æ‚µƒN[ƒ‹ƒ^ƒCƒ€
+    // è™è½ã¨ã—ã‚¯ãƒ¼ãƒ«ã‚¿ã‚¤ãƒ 
     public float tigerDropCooldown = 2f;
 
     private bool canTigerDrop = true;
 
-    //“G‚ğ“|‚µ‚½”
+    //æ•µã‚’å€’ã—ãŸæ•°
     public int killCount = 0;
+
+    //ç©ºæŒ¯ã‚ŠSE
+    public AudioSource audioSource;
+    public AudioClip rightPunchMissSE;
+    public AudioClip leftPunchMissSE;
+    public AudioClip kickMissSE;
+    public AudioClip gunSE;
+
+    //HitSE
+    public AudioClip rightPunchHitSE;
+    public AudioClip leftPunchHitSE;
+    public AudioClip kickHitSE;
+
+    //è™è½ã¨ã—SE
+    public AudioClip tigerDropSuccessSE; //å½“ãŸã£ãŸ
+    public AudioClip tigerDropMissSE;
+
+
+    // æ•µ
+    public float enemyRefreshInterval = 0.5f;
+    private GameObject[] cachedEnemies = new GameObject[0];
+    private float nextEnemyRefreshTime = 0f;
+
+    GameObject[] GetEnemies()
+    {
+        if (Time.time >= nextEnemyRefreshTime)
+        {
+            cachedEnemies = GameObject.FindGameObjectsWithTag("Enemy");
+            nextEnemyRefreshTime = Time.time + enemyRefreshInterval;
+        }
+
+        return cachedEnemies;
+    }
 
     public bool IsTigerDropReady()
     {
@@ -115,8 +147,29 @@ public class Player : MonoBehaviour
     }
 
 
+    // åŠ¹æœéŸ³ã‚’1å›é³´ã‚‰ã™
+    void PlaySE(AudioClip clip)
+    {
+        if (audioSource == null || clip == null)
+            return;
+
+        audioSource.PlayOneShot(clip);
+    }
+
     void Start()
     {
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            audioSource.playOnAwake = false;
+        }
+
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
 
@@ -134,7 +187,11 @@ public class Player : MonoBehaviour
         if (isGameOver)
             return;
 
-        //\‚¦
+        // ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰/ãƒã‚¦ã‚¹ãŒç„¡ã„ç’°å¢ƒã§ã¯ä½•ã‚‚ã—ãªã„
+        if (Keyboard.current == null || Mouse.current == null)
+            return;
+
+        //æ§‹ãˆ
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
             UnityEngine.SceneManagement.SceneManager.LoadScene(
@@ -143,7 +200,7 @@ public class Player : MonoBehaviour
             Time.timeScale = 1f;
         }
 
-        //\‚¦
+        //æ§‹ãˆ
         if (Keyboard.current.spaceKey.isPressed)
         {
             guard = true;
@@ -187,7 +244,7 @@ public class Player : MonoBehaviour
             StartTigerDrop();
         }
 
-        // ˆÚ“®
+        // ç§»å‹•
         Vector2 input = Vector2.zero;
 
         if (Keyboard.current.aKey.isPressed)
@@ -215,7 +272,7 @@ public class Player : MonoBehaviour
       (Keyboard.current.leftShiftKey.wasPressedThisFrame ||
        Keyboard.current.rightShiftKey.wasPressedThisFrame))
         {
-            // šUŒ‚ƒLƒƒƒ“ƒZƒ‹
+            //æ”»æ’ƒã‚­ãƒ£ãƒ³ã‚»ãƒ«
             if (isAttacking)
             {
                 CancelInvoke(nameof(ReturnToIdle));
@@ -230,7 +287,7 @@ public class Player : MonoBehaviour
             BackStep();
         }
 
-        // ƒpƒ“ƒ`
+        // ãƒ‘ãƒ³ãƒ
         if (!isAttacking && canAttack && Mouse.current.leftButton.wasPressedThisFrame)
         {
             isAttacking = true;
@@ -256,9 +313,14 @@ public class Player : MonoBehaviour
                 if (hit.currentEnemy != null)
                 {
                     hit.currentEnemy.TakeDamage(rightPunchDamage);
+                    PlaySE(rightPunchHitSE);
+                }
+                else
+                {
+                    PlaySE(rightPunchMissSE);
                 }
 
-                Debug.Log("‰Eƒpƒ“ƒ` " + rightPunchDamage + "ƒ_ƒ[ƒW");
+                Debug.Log("å³ãƒ‘ãƒ³ãƒ " + rightPunchDamage + "ãƒ€ãƒ¡ãƒ¼ã‚¸");
             }
             else if (combo == 2)
             {
@@ -267,9 +329,14 @@ public class Player : MonoBehaviour
                 if (hit.currentEnemy != null)
                 {
                     hit.currentEnemy.TakeDamage(leftPunchDamage);
+                    PlaySE(leftPunchHitSE);
+                }
+                else
+                {
+                    PlaySE(leftPunchMissSE);
                 }
 
-                Debug.Log("¶ƒpƒ“ƒ` " + leftPunchDamage + "ƒ_ƒ[ƒW");
+                Debug.Log("å·¦ãƒ‘ãƒ³ãƒ " + leftPunchDamage + "ãƒ€ãƒ¡ãƒ¼ã‚¸");
             }
             else if (combo == 3)
             {
@@ -278,9 +345,14 @@ public class Player : MonoBehaviour
                 if (hit.currentEnemy != null)
                 {
                     hit.currentEnemy.TakeDamage(kikkuDamage);
+                    PlaySE(kickHitSE);
+                }
+                else
+                {
+                    PlaySE(kickMissSE);
                 }
 
-                Debug.Log("ƒLƒbƒN " + kikkuDamage + "ƒ_ƒ[ƒW");
+                Debug.Log("ã‚­ãƒƒã‚¯ " + kikkuDamage + "ãƒ€ãƒ¡ãƒ¼ã‚¸");
 
                 combo = 0;
 
@@ -297,13 +369,14 @@ public class Player : MonoBehaviour
 
 
 
-        // e
+        // éŠƒ
         if (!isAttacking && canAttack && currentBullets > 0 && Mouse.current.rightButton.wasPressedThisFrame)
         {
             isAttacking = true;
             canAttack = false;
 
             sr.sprite = gunSprite;
+            PlaySE(gunSE);
 
             currentBullets--;
 
@@ -313,15 +386,15 @@ public class Player : MonoBehaviour
             {
                 target.TakeDamage(gunDamage);
 
-                Debug.Log(target.name + "‚É–½’†");
+                Debug.Log(target.name + "ã«å‘½ä¸­");
             }
             else
             {
-                Debug.Log("‘O•û‚É“G‚ª‚¢‚È‚¢");
+                Debug.Log("å‰æ–¹ã«æ•µãŒã„ãªã„");
             }
 
-            Debug.Log("e " + gunDamage + "ƒ_ƒ[ƒW");
-            Debug.Log("c’e : " + currentBullets);
+            Debug.Log("éŠƒ " + gunDamage + "ãƒ€ãƒ¡ãƒ¼ã‚¸");
+            Debug.Log("æ®‹å¼¾ : " + currentBullets);
 
             CancelInvoke(nameof(ReturnToIdle));
             CancelInvoke(nameof(EndAttack));
@@ -332,7 +405,7 @@ public class Player : MonoBehaviour
             Invoke(nameof(EnableAttack), 0.5f);
         }
 
-        // ƒeƒXƒg
+        // ãƒ†ã‚¹ãƒˆ
         if (Keyboard.current.hKey.wasPressedThisFrame)
         {
             TakeDamage(100);
@@ -375,12 +448,12 @@ public class Player : MonoBehaviour
         canAttack = true;
     }
 
-    //ƒoƒbƒNƒXƒeƒbƒv
+    //ãƒãƒƒã‚¯ã‚¹ãƒ†ãƒƒãƒ—
     void BackStep()
     {
         canBackStep = false;
 
-        // \‚¦’†
+        // æ§‹ãˆä¸­
         if (guard)
         {
             Transform nearestEnemy = GetClosestEnemy();
@@ -389,18 +462,18 @@ public class Player : MonoBehaviour
             {
                 bool movingTowardEnemy = false;
 
-                // “G‚ª‰E‘¤‚É‚¢‚é
+                // æ•µãŒå³å´ã«ã„ã‚‹
                 if (nearestEnemy.position.x > transform.position.x)
                 {
                     movingTowardEnemy = Keyboard.current.dKey.isPressed;
                 }
-                // “G‚ª¶‘¤‚É‚¢‚é
+                // æ•µãŒå·¦å´ã«ã„ã‚‹
                 else
                 {
                     movingTowardEnemy = Keyboard.current.aKey.isPressed;
                 }
 
-                // “G•ûŒü‚Ö“ü—Í‚µ‚Ä‚¢‚é‚¾‚¯‰ñ‚è‚İ
+                // æ•µæ–¹å‘ã¸å…¥åŠ›ã—ã¦ã„ã‚‹æ™‚ã ã‘å›ã‚Šè¾¼ã¿
                 if (movingTowardEnemy)
                 {
                     float distance =
@@ -412,7 +485,7 @@ public class Player : MonoBehaviour
                     {
                         Vector3 targetPos;
 
-                        // “G‚ğ‹²‚ñ‚Å”½‘Î‘¤‚ÖˆÚ“®
+                        // æ•µã‚’æŒŸã‚“ã§åå¯¾å´ã¸ç§»å‹•
                         if (transform.position.x < nearestEnemy.position.x)
                         {
                             targetPos =
@@ -435,19 +508,19 @@ public class Player : MonoBehaviour
             }
         }
 
-        // ’Êí‚ÌƒoƒbƒNƒXƒeƒbƒv
+        // é€šå¸¸ã®ãƒãƒƒã‚¯ã‚¹ãƒ†ãƒƒãƒ—
         isBackStepping = true;
 
         Vector2 direction;
 
         if (sr.flipX)
         {
-            // ¶Œü‚«‚È‚ç‰E‚Ö‰º‚ª‚é
+            // å·¦å‘ããªã‚‰å³ã¸ä¸‹ãŒã‚‹
             direction = Vector2.right;
         }
         else
         {
-            // ‰EŒü‚«‚È‚ç¶‚Ö‰º‚ª‚é
+            // å³å‘ããªã‚‰å·¦ã¸ä¸‹ãŒã‚‹
             direction = Vector2.left;
         }
 
@@ -460,12 +533,12 @@ public class Player : MonoBehaviour
         Invoke(nameof(EnableBackStep), backStepCooldown);
     }
 
-    void EnableBackStep() //‚¢[‚È‚Ô‚éƒoƒbƒNƒXƒeƒbƒv
+    void EnableBackStep() //ã„ãƒ¼ãªã¶ã‚‹ãƒãƒƒã‚¯ã‚¹ãƒ†ãƒƒãƒ—
     {
         canBackStep = true;
     }
 
-    void EndBackStep()  //ƒGƒ“ƒhƒoƒbƒNƒXƒeƒbƒv
+    void EndBackStep()  //ã‚¨ãƒ³ãƒ‰ãƒãƒƒã‚¯ã‚¹ãƒ†ãƒƒãƒ—
     {
         isBackStepping = false;
         rb.linearVelocity = Vector2.zero;
@@ -494,13 +567,22 @@ public class Player : MonoBehaviour
 
     Transform GetClosestEnemy()
     {
-        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        GameObject[] enemies = GetEnemies();
 
         Transform closestEnemy = null;
         float closestDistance = Mathf.Infinity;
 
         foreach (GameObject enemy in enemies)
         {
+            if (enemy == null)
+                continue;
+
+            // å€’ã‚ŒãŸæ•µã¯å¯¾è±¡ã«ã—ãªã„
+            Enemy enemyScript = enemy.GetComponent<Enemy>();
+
+            if (enemyScript != null && enemyScript.IsDead)
+                continue;
+
             float distance = Vector2.Distance(transform.position, enemy.transform.position);
 
             if (distance < closestDistance)
@@ -514,28 +596,35 @@ public class Player : MonoBehaviour
 
     Enemy GetClosestEnemyInFront()
     {
-        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        GameObject[] enemies = GetEnemies();
 
         Enemy closestEnemy = null;
         float closestDistance = Mathf.Infinity;
 
         foreach (GameObject enemyObj in enemies)
         {
+            if (enemyObj == null)
+                continue;
+
             Enemy enemy = enemyObj.GetComponent<Enemy>();
 
-            if (enemy == null)
+            if (enemy == null || enemy.IsDead)
+                continue;
+
+            // ç”»é¢ã«å…¥ã‚‹å‰ã®æ•µã¯ã€éŠƒã§æ’ƒã¦ãªã„
+            if (!enemy.HasEnteredScreen)
                 continue;
 
             float direction =
                 enemy.transform.position.x - transform.position.x;
 
-            // ¶Œü‚«
+            // å·¦å‘ã
             if (sr.flipX)
             {
                 if (direction > 0)
                     continue;
             }
-            // ‰EŒü‚«
+            // å³å‘ã
             else
             {
                 if (direction < 0)
@@ -598,6 +687,8 @@ public class Player : MonoBehaviour
         SceneManager.LoadScene(
             SceneManager.GetActiveScene().buildIndex);
     }
+
+    //è™è½ã¨ã—å‡¦ç†
     void StartTigerDrop()
     {
         canTigerDrop = false;
@@ -609,13 +700,11 @@ public class Player : MonoBehaviour
 
         sr.sprite = tigerDrop;
 
-        Debug.Log("ŒÕ—‚Æ‚µ\‚¦");
-
         Invoke(nameof(FailTigerDrop), tigerDropWindow);
     }
 
 
-    //ŒÕ—‚Æ‚µ¸”s
+    //è™è½ã¨ã—å¤±æ•—
     void FailTigerDrop()
     {
         if (!tigerDropReady)
@@ -624,7 +713,8 @@ public class Player : MonoBehaviour
         tigerDropReady = false;
         isTigerDropStance = false;
 
-        Debug.Log("ŒÕ—‚Æ‚µ¸”s");
+        Debug.Log("è™è½ã¨ã—å¤±æ•—");
+        PlaySE(tigerDropMissSE);
 
         canAttack = false;
 
@@ -634,7 +724,7 @@ public class Player : MonoBehaviour
         Invoke(nameof(EnableTigerDrop), tigerDropCooldown);
     }
 
-    //ŒÕ—‚Æ‚µ¬Œ÷
+    //è™è½ã¨ã—æˆåŠŸ
     public void TigerDropSuccess(Enemy enemy)
     {
         if (!tigerDropReady)
@@ -650,11 +740,12 @@ public class Player : MonoBehaviour
 
         enemy.TakeDamage(tigerDropDamage);
 
-        Debug.Log("ŒÕ—‚Æ‚µ¬Œ÷I");
+        Debug.Log("è™è½ã¨ã—æˆåŠŸï¼");
+        PlaySE(tigerDropSuccessSE);
 
         Invoke(nameof(ReturnToIdle), 0.3f);
 
-        Invoke(nameof(EnableTigerDrop),tigerDropCooldown);
+        Invoke(nameof(EnableTigerDrop), tigerDropCooldown);
     }
     void EnableTigerDrop()
     {
@@ -663,8 +754,7 @@ public class Player : MonoBehaviour
 
     void UpdateEnemyHpBar()
     {
-        GameObject[] enemies =
-            GameObject.FindGameObjectsWithTag("Enemy");
+        GameObject[] enemies = GetEnemies();
 
         Enemy targetEnemy = null;
 
@@ -672,22 +762,25 @@ public class Player : MonoBehaviour
 
         foreach (GameObject enemyObj in enemies)
         {
+            if (enemyObj == null)
+                continue;
+
             Enemy enemy = enemyObj.GetComponent<Enemy>();
 
-            if (enemy == null)
+            if (enemy == null || enemy.IsDead)
                 continue;
 
             float direction =
                 enemy.transform.position.x -
                 transform.position.x;
 
-            // ¶Œü‚«
+            // å·¦å‘ã
             if (sr.flipX)
             {
                 if (direction > 0)
                     continue;
             }
-            // ‰EŒü‚«
+            // å³å‘ã
             else
             {
                 if (direction < 0)
@@ -704,15 +797,19 @@ public class Player : MonoBehaviour
                 closestDistance = distance;
                 targetEnemy = enemy;
             }
+        }
 
-            if (closestDistance > 5f)
-            {
-                targetEnemy = null;
-            }
+        // å…¨å“¡èª¿ã¹çµ‚ãˆã¦ã‹ã‚‰ã€é ã™ãã‚‹å ´åˆã ã‘å¯¾è±¡ãªã—ã«ã™ã‚‹
+        if (closestDistance > 5f)
+        {
+            targetEnemy = null;
         }
 
         foreach (GameObject enemyObj in enemies)
         {
+            if (enemyObj == null)
+                continue;
+
             Enemy enemy = enemyObj.GetComponent<Enemy>();
 
             if (enemy != null)
@@ -725,6 +822,6 @@ public class Player : MonoBehaviour
     {
         killCount++;
 
-        Debug.Log("Œ‚”j” : " + killCount);
+        Debug.Log("æ’ƒç ´æ•° : " + killCount);
     }
 }

@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 229835722760409673}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_LocalPosition: {x: 4, y: -7.1300006, z: 0}
+  m_LocalPosition: {x: 4, y: -10.729999, z: 0}
   m_LocalScale: {x: 0.2, y: 0.2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -183,7 +183,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   maxHp: 500
-  hp: 0
+  hp: 500
   downSprite: {fileID: 357006442158401228, guid: b10dffce049be4d499dea2aa838fb025, type: 3}
 --- !u!114 &336566074844939000
 MonoBehaviour:
@@ -205,8 +205,8 @@ MonoBehaviour:
   moveSpeed: 2
   detectRange: 20
   attackRange: 1.5
-  attack1: 100
-  attack2: 200
+  attack1: 50
+  attack2: 100
   attackCooldown: 2
   attackWindupTime: 1
   attackPoint: {fileID: 3497821112859928529}
@@ -216,8 +216,12 @@ MonoBehaviour:
     m_Bits: 64
   stunTime: 0.2
   counterWindow: 0.05
+  enterTimeout: 6
   canMove: 1
   startInBattle: 1
+  hitAttack: {fileID: 8300000, guid: 37a26b7c6e801d949bbd20dcd05843e0, type: 3}
+  missAttack: {fileID: 8300000, guid: a90e61f3535fcd848b343d7cdf7d33a6, type: 3}
+  audioSource: {fileID: 0}
 --- !u!1 &3085630450796981519
 GameObject:
   m_ObjectHideFlags: 0
