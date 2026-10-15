@@ -7,12 +7,11 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 #endif
 
-// 選択肢1つ分
 [Serializable]
 public class DialogueChoice
 {
-    public string label;          // ボタンに表示する文字
-    public int affectionDelta;    // 好感度の増減
+    public string label;
+    public int affectionDelta;
 
     [Tooltip("ONにすると選択後に jumpTo の行へ飛ぶ。OFFなら次の行へ")]
     public bool jump;
@@ -23,7 +22,6 @@ public class DialogueChoice
 [Serializable]
 public class DialogueLine
 {
-    // 番号表示用(自動で入るので触らなくてOK)。先頭に置くとElementの見出しになる
     public string number;
 
     public string speaker;
@@ -48,26 +46,26 @@ public class Talk : MonoBehaviour
     [SerializeField] private TMP_Text talkText;
     //[SerializeField] private GameObject nextIcon;
 
-    //好感度表示(空でもOK)
-    [SerializeField] private TMP_Text affectionText;
+    //好感度
+    [SerializeField] private AffectionManager affection;
+
+    //ラスト(紙芝居)
+    [SerializeField] private EndingManager endingManager;
 
     //選択肢
-    [SerializeField] private Transform choiceContainer;   // VerticalLayoutGroupを付けた親
-    [SerializeField] private Button choiceButtonPrefab;   // 子にTMP_Textを持つButton
+    [SerializeField] private Transform choiceContainer;
+    [SerializeField] private Button choiceButtonPrefab;
 
-    //暗転(画面いっぱいの黒いImage)
+    //暗転
     [SerializeField] private Image fadePanel;
-    [SerializeField] private float fadeDuration = 0.6f;   // 暗くなる/明るくなる時間
-    [SerializeField] private float blackHoldTime = 1f;  // 真っ暗のまま止める時間
+    [SerializeField] private float fadeDuration = 0.6f;
+    [SerializeField] private float blackHoldTime = 0.8f;
 
     //会話
     [SerializeField] private DialogueLine[] lines;
 
     //文字の時間
-    [SerializeField] private float charInterval = 0.05f;
-
-    // 現在の好感度(他のスクリプトから読める)
-    public int Affection { get; private set; }
+    [SerializeField] private float charInterval = 0.04f;
 
     private int index = -1;
     private bool isTyping;
@@ -76,7 +74,6 @@ public class Talk : MonoBehaviour
     private bool isFinished;
     private Coroutine typingRoutine;
 
-    // Inspectorで値を変えたり並べ替えたりするたびに、行番号を自動で振り直す
     private void OnValidate()
     {
         if (lines == null) return;
@@ -89,7 +86,6 @@ public class Talk : MonoBehaviour
     private void Start()
     {
         choiceContainer.gameObject.SetActive(false);
-        UpdateAffectionUI();
         SetFadeAlpha(0f);
         ShowLine(0);
     }
@@ -99,11 +95,10 @@ public class Talk : MonoBehaviour
         if (!SpacePressed()) return;
 
         if (isFinished) return;
-        if (isChoosing || isFading) return; // 選択肢表示中・暗転中はSpaceで進めない
+        if (isChoosing || isFading) return;
 
         if (isTyping)
         {
-            // 表示途中なら全文を即表示
             CompleteTyping();
         }
         else
@@ -122,7 +117,6 @@ public class Talk : MonoBehaviour
 #endif
     }
 
-    // 指定した行を表示
     private void ShowLine(int i)
     {
         if (i < 0 || i >= lines.Length)
@@ -144,7 +138,6 @@ public class Talk : MonoBehaviour
         talkText.text = full;
         talkText.maxVisibleCharacters = 0;
 
-        // 文字数を正しく数えるためにメッシュを更新
         talkText.ForceMeshUpdate();
         int total = talkText.textInfo.characterCount;
 
@@ -164,7 +157,6 @@ public class Talk : MonoBehaviour
         OnLineDisplayed();
     }
 
-    // 文字の表示が終わったとき
     private void OnLineDisplayed()
     {
         isTyping = false;
@@ -184,7 +176,7 @@ public class Talk : MonoBehaviour
 
         foreach (var choice in choices)
         {
-            var captured = choice; // ラムダ用にコピー
+            var captured = choice;
             var button = Instantiate(choiceButtonPrefab, choiceContainer);
             button.GetComponentInChildren<TMP_Text>().text = captured.label;
             button.onClick.AddListener(() => OnChoiceSelected(captured));
@@ -193,18 +185,15 @@ public class Talk : MonoBehaviour
 
     private void OnChoiceSelected(DialogueChoice choice)
     {
-        // 選択肢ボタンを片付ける
         foreach (Transform child in choiceContainer) Destroy(child.gameObject);
         choiceContainer.gameObject.SetActive(false);
         isChoosing = false;
 
-        Affection += choice.affectionDelta;
-        UpdateAffectionUI();
+        if (affection != null) affection.Add(choice.affectionDelta);
 
         GoTo(choice.jump ? choice.jumpTo : index + 1);
     }
 
-    // 次の行へ進む。今の行が blackoutAfter なら暗転をはさむ
     private void GoTo(int next)
     {
         if (fadePanel != null && lines[index].blackoutAfter)
@@ -221,13 +210,13 @@ public class Talk : MonoBehaviour
     {
         isFading = true;
 
-        yield return Fade(0f, 1f);          // だんだん暗く
-        nameText.text = "";                 // 暗い間に文字を消す
+        yield return Fade(0f, 1f);
+        nameText.text = "";
         talkText.text = "";
         yield return new WaitForSeconds(blackHoldTime);
 
-        ShowLine(next);                     // 次の会話を表示(終了なら会話終了)
-        yield return Fade(1f, 0f);          // だんだん明るく
+        ShowLine(next);
+        yield return Fade(1f, 0f);
 
         isFading = false;
     }
@@ -252,15 +241,34 @@ public class Talk : MonoBehaviour
         fadePanel.color = c;
     }
 
-    private void UpdateAffectionUI()
-    {
-        if (affectionText) affectionText.text = $"好感度: {Affection}";
-    }
-
     private void EndDialogue()
     {
         isFinished = true;
         //if (nextIcon) nextIcon.SetActive(false);
-        Debug.Log($"会話終了 / 最終好感度: {Affection}");
+        Debug.Log($"会話終了 / 最終好感度: {(affection != null ? affection.Value : 0)}");
+
+        if (endingManager != null) StartCoroutine(StartEndingRoutine());
+    }
+
+    // 暗転して、好感度に応じた紙芝居を始める
+    private IEnumerator StartEndingRoutine()
+    {
+        while (isFading) yield return null;   // 直前の暗転が終わるのを待つ
+        isFading = true;
+
+        if (fadePanel != null) yield return Fade(0f, 1f);   // だんだん暗く
+        nameText.text = "";
+        talkText.text = "";
+
+        endingManager.Begin(affection != null ? affection.Value : 0);
+
+        if (fadePanel != null)
+        {
+            yield return new WaitForSeconds(blackHoldTime);
+            yield return Fade(1f, 0f);                       // だんだん明るく(紙芝居の1枚目が見える)
+        }
+
+        endingManager.Play();   // 明るくなったら、結末の会話文を読み始められるようにする
+        isFading = false;
     }
 }
