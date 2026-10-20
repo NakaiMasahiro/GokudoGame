@@ -3,6 +3,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -66,6 +67,7 @@ public class Talk : MonoBehaviour
 
     //•¶Žš‚ÌŽžŠÔ
     [SerializeField] private float charInterval = 0.04f;
+    [SerializeField] private bool shuffleChoices = true;
 
     private int index = -1;
     private bool isTyping;
@@ -174,7 +176,16 @@ public class Talk : MonoBehaviour
         isChoosing = true;
         choiceContainer.gameObject.SetActive(true);
 
-        foreach (var choice in choices)
+        var order = new List<DialogueChoice>(choices);
+        if (shuffleChoices)
+        {
+            for (int i = order.Count - 1; i >= 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                (order[i], order[j]) = (order[j], order[i]);
+            }
+        }
+        foreach (var choice in order)
         {
             var captured = choice;
             var button = Instantiate(choiceButtonPrefab, choiceContainer);

@@ -13,6 +13,7 @@ public class AffectionManager : MonoBehaviour
     [SerializeField] private int meterMin = 0;
     [SerializeField] private int meterMax = 100;
     [SerializeField] private float meterSpeed = 60f;
+    [SerializeField] private GameObject[] meterAttachments;
 
     public int Value { get; private set; }
 
@@ -40,6 +41,8 @@ public class AffectionManager : MonoBehaviour
     private void Update()
     {
         if (!affectionSlider) return;
+
+        SyncAttachments();
         displayed = meterSpeed <= 0f
             ? Value
             : Mathf.MoveTowards(displayed, Value, meterSpeed * Time.deltaTime);
@@ -47,7 +50,23 @@ public class AffectionManager : MonoBehaviour
         affectionSlider.value = displayed;
     }
 
-    // DŠ´“x‚ð‘Œ¸‚·‚é
+    private void SyncAttachments()
+    {
+        if (!affectionSlider || meterAttachments == null) return;
+
+        bool visible = affectionSlider.gameObject.activeInHierarchy;
+        foreach (var obj in meterAttachments)
+        {
+            if (obj != null && obj.activeSelf != visible) obj.SetActive(visible);
+        }
+    }
+
+    public void ShowMeter(bool show)
+    {
+        if (affectionSlider) affectionSlider.gameObject.SetActive(show);
+        SyncAttachments();
+    }
+
     public void Add(int delta)
     {
         Value += delta;
