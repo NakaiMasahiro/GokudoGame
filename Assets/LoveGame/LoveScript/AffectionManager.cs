@@ -15,6 +15,13 @@ public class AffectionManager : MonoBehaviour
     [SerializeField] private float meterSpeed = 60f;
     [SerializeField] private GameObject[] meterAttachments;
 
+    [Header("効果音")]
+    [SerializeField] private AudioSource seSource;      // 効果音を鳴らすAudioSource(空なら鳴らさない)
+    [SerializeField] private AudioClip gainSE;          // 好感度が上がったとき
+    [SerializeField] private AudioClip lossSE;          // 好感度が下がったとき
+    [Range(0f, 1f)]
+    [SerializeField] private float seVolume = 1f;
+
     public int Value { get; private set; }
 
     public event Action<int> OnChanged;
@@ -49,7 +56,6 @@ public class AffectionManager : MonoBehaviour
 
         affectionSlider.value = displayed;
     }
-
     private void SyncAttachments()
     {
         if (!affectionSlider || meterAttachments == null) return;
@@ -67,11 +73,21 @@ public class AffectionManager : MonoBehaviour
         SyncAttachments();
     }
 
+    // 好感度を増減する
     public void Add(int delta)
     {
         Value += delta;
+        PlaySE(delta);
         RefreshUI();
         OnChanged?.Invoke(Value);
+    }
+
+    private void PlaySE(int delta)
+    {
+        if (seSource == null || delta == 0) return;
+
+        var clip = delta > 0 ? gainSE : lossSE;
+        if (clip != null) seSource.PlayOneShot(clip, seVolume);
     }
 
     private void RefreshUI()

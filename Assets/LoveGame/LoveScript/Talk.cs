@@ -67,6 +67,7 @@ public class Talk : MonoBehaviour
 
     //文字の時間
     [SerializeField] private float charInterval = 0.04f;
+    [SerializeField] private TypeSound typeSound;   // 文字が出るときの効果音
     [SerializeField] private bool shuffleChoices = true;
 
     private int index = -1;
@@ -146,6 +147,7 @@ public class Talk : MonoBehaviour
         for (int i = 1; i <= total; i++)
         {
             talkText.maxVisibleCharacters = i;
+            typeSound?.Play(talkText.textInfo.characterInfo[i - 1].character, i);
             yield return new WaitForSeconds(charInterval);
         }
 
@@ -185,6 +187,9 @@ public class Talk : MonoBehaviour
                 (order[i], order[j]) = (order[j], order[i]);
             }
         }
+        // 確認用: どの行で、どんな並びになったかをConsoleに出す(原因が分かったら消してOK)
+        Debug.Log($"選択肢 行[{index}] シャッフル={shuffleChoices} 並び: {string.Join(" / ", order.ConvertAll(c => c.label))}");
+
         foreach (var choice in order)
         {
             var captured = choice;

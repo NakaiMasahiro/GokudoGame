@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
@@ -16,6 +17,14 @@ public enum WalkIn
     None,        // 歩かない(ふつうに表示)
     FromLeft,    // 画面の左端から入ってくる
     FromRight    // 画面の右端から入ってくる
+}
+
+// 歩いて去るときの、向かう方向
+public enum WalkOut
+{
+    None,        // 歩かない(ふつうにフェードアウトして消える)
+    ToLeft,      // 画面の左端へ去っていく
+    ToRight      // 画面の右端へ去っていく
 }
 
 // (旧バージョンのデータを引き継ぐためだけに残している)
@@ -51,6 +60,9 @@ public class CharacterEntry
 
     [Tooltip("画面の端から入ってくる。着いてからセリフが出る")]
     public WalkIn walkIn;
+
+    [Tooltip("「消す(Hide)」がONのときだけ有効。フェードアウトではなく、画面の端へ歩いて去っていく。去ったあとにセリフが出る")]
+    public WalkOut walkOut;
 }
 
 // 結末の会話1つ分(背景 + 人物 + セリフ)
@@ -94,6 +106,9 @@ public class Ending
     public string name;                       // 管理用の名前(例: HappyEnd)
     public int minAffection;                  // この好感度以上で当てはまる
     public EndingSlide[] slides;              // 会話を順番に(背景・人物・セリフ)
+
+    [Tooltip("最後に暗転したあと、画面に出す表記(例: End1)。空なら表記なし")]
+    public string endLabel;
 }
 
 // 好感度に応じた結末を、背景・人物・会話文で表示するスクリプト
@@ -123,6 +138,7 @@ public class EndingManager : MonoBehaviour
     [Header("設定")]
     [SerializeField] private float fadeDuration = 0.5f;  // 絵が切り替わるときのフェード時間
     [SerializeField] private float charInterval = 0.04f; // 1文字あたりの秒数
+    [SerializeField] private TypeSound typeSound;        // 文字が出るときの効果音
 
     [Header("歩いて登場")]
     [SerializeField] private float walkDuration = 1.5f;  // 端から立ち位置まで入ってくる時間(秒)
@@ -132,8 +148,15 @@ public class EndingManager : MonoBehaviour
     [Header("人物の大きさ")]
     [SerializeField] private float characterHeight = 300f; // 人物の高さ(px)。横幅は絵の縦横比から自動。0にすると各Imageの設定のまま
 
+    [Header("エンド表記(最後の暗転のあとに出す)")]
+    [SerializeField] private TMP_Text endLabelText;          // 表記を出すText。endingRoot の直下で、slideGroup より手前に置く(空ならONにしない)
+    [SerializeField] private float labelFadeDuration = 1f;   // 表記がじわっと出る時間(秒)
+    [SerializeField] private float labelHoldTime = 3f;       // 表記を見せる時間(秒)。Spaceで飛ばせる
+
     [Header("全部見終わったとき")]
-    [SerializeField] private UnityEvent onFinished;      // タイトルへ戻る等をここに登録
+    [Tooltip("ここにStart画面のシーン名を入れると、エンド表記のあとにそのシーンへ戻る(Build Settings の Scenes In Build に入れておく)。同じシーン内のStart画面に戻す場合は空にして、下の On Finished に登録する")]
+    [SerializeField] private string startSceneName;      // Start画面のシーン名
+    [SerializeField] private UnityEvent onFinished;      // 終わったときの処理をここに登録(シーンを使わない場合のStart画面表示など)
 
     // ---- 旧バージョンのデータ(Character Slots に自動で引き継がれる) ----
     [SerializeField, HideInInspector] private Image leftCharacterImage;
@@ -294,6 +317,7 @@ public class EndingManager : MonoBehaviour
 
         endingRoot.SetActive(true);
         slideGroup.alpha = 1f;
+        if (endLabelText) endLabelText.gameObject.SetActive(false);
 
         // 人物は、最初は全員いない状態・元の位置から始める
         for (int k = 0; k < slotCount; k++)
@@ -310,7 +334,8 @@ public class EndingManager : MonoBehaviour
         slideIndex = 0;
         var target = new Sprite[slotCount];
         var walk = new WalkIn[slotCount];
-        ComputePlan(current.slides[0], target, walk);
+        var exit = new WalkOut[slotCount];
+        ComputePlan(current.slides[0], target, walk, exit);
         PrepareSlide(0, target, walk, null);
     }
     public void Play()
@@ -328,7 +353,8 @@ public class EndingManager : MonoBehaviour
         var slide = current.slides[slideIndex];
         var target = new Sprite[slotCount];
         var walk = new WalkIn[slotCount];
-        ComputePlan(slide, target, walk);
+        var exit = new WalkOut[slotCount];
+        ComputePlan(slide, target, walk, exit);
 
         if (AnyWalk(walk))
         {
@@ -369,12 +395,13 @@ public class EndingManager : MonoBehaviour
 
     // この場面が終わったあとの、各立ち位置の人物(target)と、歩いて入ってくる方向(walk)を求める
     // 指定のない位置は今のまま。人物の指定がまったくない場面もOK
-    private void ComputePlan(EndingSlide slide, Sprite[] target, WalkIn[] walk)
+    private void ComputePlan(EndingSlide slide, Sprite[] target, WalkIn[] walk, WalkOut[] exit)
     {
         for (int k = 0; k < slotCount; k++)
         {
             target[k] = CurrentCharacter(k);
             walk[k] = WalkIn.None;
+            exit[k] = WalkOut.None;
         }
 
         if (IsIllustration(slide) || slide.characters == null) return;
@@ -392,6 +419,8 @@ public class EndingManager : MonoBehaviour
 
             if (e.hide)
             {
+                // 今いる人物だけが、歩いて去れる
+                if (target[k] != null) exit[k] = e.walkOut;
                 target[k] = null;
                 walk[k] = WalkIn.None;
             }
@@ -459,6 +488,12 @@ public class EndingManager : MonoBehaviour
         return false;
     }
 
+    private static bool AnyExit(WalkOut[] exit)
+    {
+        foreach (var w in exit) if (w != WalkOut.None) return true;
+        return false;
+    }
+
     // 画面の外(左端または右端の外側)の位置
     private Vector2 OffscreenPos(int k, WalkIn from)
     {
@@ -513,6 +548,44 @@ public class EndingManager : MonoBehaviour
             if (walk[k] == WalkIn.None || slots[k] == null) continue;
             slots[k].rectTransform.anchoredPosition = homePos[k];
             slots[k].rectTransform.localScale = homeScale[k];   // 着いたら元の向きに戻す
+        }
+    }
+
+    // 去っていく人物が全員、立ち位置から画面の端へ歩いて出ていく(だんだん速くなる)
+    private IEnumerator WalkAway(WalkOut[] exit)
+    {
+        var goal = new Vector2[slotCount];
+
+        for (int k = 0; k < slotCount; k++)
+        {
+            if (exit[k] == WalkOut.None || slots[k] == null) continue;
+            goal[k] = OffscreenPos(k, exit[k] == WalkOut.ToLeft ? WalkIn.FromLeft : WalkIn.FromRight);
+        }
+
+        float duration = Mathf.Max(0.01f, walkDuration);
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / duration);
+            float eased = p * p;   // だんだん加速する
+
+            for (int k = 0; k < slotCount; k++)
+            {
+                if (exit[k] == WalkOut.None || slots[k] == null) continue;
+                slots[k].rectTransform.anchoredPosition =
+                    new Vector2(Mathf.Lerp(homePos[k].x, goal[k].x, eased), homePos[k].y);
+            }
+            yield return null;
+        }
+
+        // 画面の外に出たので、人物を消して、位置を元に戻しておく
+        for (int k = 0; k < slotCount; k++)
+        {
+            if (exit[k] == WalkOut.None || slots[k] == null) continue;
+            slots[k].enabled = false;
+            slots[k].rectTransform.anchoredPosition = homePos[k];
+            slots[k].rectTransform.localScale = homeScale[k];
         }
     }
 
@@ -647,10 +720,12 @@ public class EndingManager : MonoBehaviour
         {
             // 最後まで読み終わった(画面は黒のまま)
             yield return FadeGroup(1f, 0f);
+            yield return ShowEndLabel(current.endLabel);             // 暗転のあとに「End1」などを出す
             isPlaying = false;
             isBusy = false;
             Debug.Log("エンディング終了");
             onFinished?.Invoke();
+            if (!string.IsNullOrEmpty(startSceneName)) SceneManager.LoadScene(startSceneName);
             yield break;
         }
 
@@ -660,7 +735,8 @@ public class EndingManager : MonoBehaviour
 
         var target = new Sprite[slotCount];
         var walk = new WalkIn[slotCount];
-        ComputePlan(slide, target, walk);
+        var exit = new WalkOut[slotCount];
+        ComputePlan(slide, target, walk, exit);
 
         var changed = new bool[slotCount];   // 人物が入れ替わる位置
         var fadeOut = new bool[slotCount];   // 消える人物がいる位置
@@ -669,11 +745,18 @@ public class EndingManager : MonoBehaviour
         {
             Sprite oldChar = CurrentCharacter(k);
             changed[k] = target[k] != oldChar;
-            fadeOut[k] = oldChar != null && (changed[k] || walk[k] != WalkIn.None);
+            // 歩いて去る人物は、フェードアウトではなく歩いて消える
+            fadeOut[k] = oldChar != null && exit[k] == WalkOut.None && (changed[k] || walk[k] != WalkIn.None);
             fadeIn[k] = changed[k] && target[k] != null && walk[k] == WalkIn.None;
         }
         bool anyWalk = AnyWalk(walk);
         bool characterOnly = !backgroundChanges && (Any(changed) || anyWalk);
+
+        if (AnyExit(exit))
+        {
+            HideTextBox();
+            yield return WalkAway(exit);                             // 端へ歩いて去っていく
+        }
 
         if (backgroundChanges)
         {
@@ -705,6 +788,34 @@ public class EndingManager : MonoBehaviour
         isBusy = false;
         StartTyping();
     }
+    // 暗転した画面に、どのエンドかの表記をじわっと出して、少し見せる(Spaceで飛ばせる)
+    private IEnumerator ShowEndLabel(string label)
+    {
+        if (endLabelText == null || string.IsNullOrEmpty(label)) yield break;
+
+        endLabelText.text = label;
+        endLabelText.alpha = 0f;
+        endLabelText.gameObject.SetActive(true);
+
+        float t = 0f;
+        float d = Mathf.Max(0.01f, labelFadeDuration);
+        while (t < d)
+        {
+            t += Time.deltaTime;
+            endLabelText.alpha = Mathf.Clamp01(t / d);
+            yield return null;
+        }
+        endLabelText.alpha = 1f;
+
+        float hold = 0f;
+        while (hold < labelHoldTime)
+        {
+            hold += Time.deltaTime;
+            if (SpacePressed()) break;
+            yield return null;
+        }
+    }
+
     private void StartTyping()
     {
         typingRoutine = StartCoroutine(TypeText());
@@ -723,6 +834,7 @@ public class EndingManager : MonoBehaviour
             for (int i = 1; i <= total; i++)
             {
                 talkText.maxVisibleCharacters = i;
+                typeSound?.Play(talkText.textInfo.characterInfo[i - 1].character, i);
                 yield return new WaitForSeconds(charInterval);
             }
         }

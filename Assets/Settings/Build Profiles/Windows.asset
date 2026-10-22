@@ -18,8 +18,17 @@ MonoBehaviour:
   m_PlatformId: 4e3c793746204150860bf175a9a41a05
   m_PlatformBuildProfile:
     rid: 4271510457095290947
-  m_OverrideGlobalSceneList: 0
-  m_Scenes: []
+  m_OverrideGlobalSceneList: 1
+  m_Scenes:
+  - m_enabled: 1
+    m_path: Assets/Scenes/Title.unity
+    m_guid: d3020706b4dc5234d97ba4bebbfcda5d
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game.unity
+    m_guid: 8c9cfa26abfee488c85f1582747f6a02
+  - m_enabled: 1
+    m_path: Assets/LoveGame/LoveGame.unity
+    m_guid: 3f57b45536224b140b4f4c390b1b71dc
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
